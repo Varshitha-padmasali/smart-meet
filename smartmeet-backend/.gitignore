@@ -1,0 +1,4 @@
+# Keeps installed packages, local secrets, and generated logs out of version control.
+node_modules
+.env
+npm-debug.log*
