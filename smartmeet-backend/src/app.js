@@ -1,6 +1,7 @@
 const cors = require('cors')
 const express = require('express')
 const authRoutes = require('./routes/authRoutes')
+const invitationRoutes = require('./routes/invitationRoutes')
 const meetingRoutes = require('./routes/meetingRoutes')
 
 const app = express()
@@ -19,6 +20,9 @@ app.use('/api/auth', authRoutes)
 
 // Meeting routes stay separate from auth as the meeting domain grows.
 app.use('/api/meetings', meetingRoutes)
+
+// Invitation routes enforce username-based private meeting access.
+app.use('/api/invitations', invitationRoutes)
 
 // Centralized fallback for unknown routes.
 app.use((req, res) => {

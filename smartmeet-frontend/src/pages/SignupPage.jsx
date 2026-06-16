@@ -10,9 +10,10 @@ function SignupPage() {
   const navigate = useNavigate()
   const { signup } = useAuth()
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
+    name: '',
     password: '',
+    username: '',
   })
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -82,6 +83,17 @@ function SignupPage() {
             required
             type="text"
             value={formData.name}
+          />
+          <FormField
+            autoComplete="username"
+            helperText="Use letters, numbers, and underscores only."
+            label="Username"
+            name="username"
+            onChange={handleChange}
+            placeholder="varshitha_01"
+            required
+            type="text"
+            value={formData.username}
           />
           <FormField
             autoComplete="email"

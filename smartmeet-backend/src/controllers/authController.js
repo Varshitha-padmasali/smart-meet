@@ -9,6 +9,7 @@ function sendAuthResponse(res, statusCode, user) {
       id: user._id,
       name: user.name,
       email: user.email,
+      username: user.username,
     },
   })
 }
@@ -16,19 +17,29 @@ function sendAuthResponse(res, statusCode, user) {
 // Handles new user registration and returns a JWT for immediate authenticated use.
 async function signup(req, res) {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password, username } = req.body
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required' })
+    if (!name || !email || !password || !username) {
+      return res.status(400).json({
+        message: 'Name, username, email, and password are required',
+      })
     }
 
-    const existingUser = await User.findOne({ email })
+    const normalizedUsername = username.trim().toLowerCase()
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username: normalizedUsername }],
+    })
 
     if (existingUser) {
-      return res.status(409).json({ message: 'User already exists' })
+      return res.status(409).json({ message: 'Email or username already exists' })
     }
 
-    const user = await User.create({ name, email, password })
+    const user = await User.create({
+      email,
+      name,
+      password,
+      username: normalizedUsername,
+    })
     return sendAuthResponse(res, 201, user)
   } catch (error) {
     return res.status(500).json({ message: 'Signup failed', error: error.message })
@@ -63,6 +74,7 @@ async function getCurrentUser(req, res) {
       id: req.user._id,
       name: req.user.name,
       email: req.user.email,
+      username: req.user.username,
     },
   })
 }
