@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getMeetingMessages } from '../services/messageService.js'
 import socket from '../services/socketService.js'
 
 // ChatPanel connects to a meeting room and exchanges real-time Socket.io messages.
@@ -11,6 +12,28 @@ function ChatPanel({ meetingId, user }) {
     if (!meetingId) {
       return undefined
     }
+
+    async function loadMessageHistory() {
+      try {
+        const data = await getMeetingMessages(meetingId)
+        setMessages(
+          data.messages.map((message) => ({
+            createdAt: message.createdAt,
+            id: message._id,
+            meetingId: message.meetingId,
+            message: message.text,
+            sender: {
+              name: message.senderName,
+              username: message.senderUsername,
+            },
+          })),
+        )
+      } catch {
+        setSocketError('Unable to load chat history.')
+      }
+    }
+
+    loadMessageHistory()
 
     if (!socket.connected) {
       socket.connect()

@@ -3,6 +3,7 @@ const express = require('express')
 const authRoutes = require('./routes/authRoutes')
 const invitationRoutes = require('./routes/invitationRoutes')
 const meetingRoutes = require('./routes/meetingRoutes')
+const messageRoutes = require('./routes/messageRoutes')
 
 const app = express()
 
@@ -23,6 +24,9 @@ app.use('/api/meetings', meetingRoutes)
 
 // Invitation routes enforce username-based private meeting access.
 app.use('/api/invitations', invitationRoutes)
+
+// Message routes expose authenticated chat history.
+app.use('/api/messages', messageRoutes)
 
 // Centralized fallback for unknown routes.
 app.use((req, res) => {
