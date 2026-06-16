@@ -1,5 +1,26 @@
 const Meeting = require('../models/Meeting')
 
+// Lists meetings owned by or joined by the authenticated user.
+async function getMyMeetings(req, res) {
+  try {
+    const meetings = await Meeting.find({
+      $or: [
+        { host: req.user._id },
+        { 'participants.user': req.user._id },
+      ],
+    })
+      .populate('host', 'name username email')
+      .sort({ scheduledAt: 1 })
+
+    return res.json({ meetings })
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+      message: 'Unable to load meetings',
+    })
+  }
+}
+
 // Creates a meeting owned by the authenticated user.
 async function createMeeting(req, res) {
   try {
@@ -46,4 +67,5 @@ async function createMeeting(req, res) {
 
 module.exports = {
   createMeeting,
+  getMyMeetings,
 }

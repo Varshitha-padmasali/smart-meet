@@ -6,6 +6,12 @@ export async function createMeeting(meetingDetails) {
   return response.data
 }
 
+// Loads meetings visible to the current user.
+export async function getMyMeetings() {
+  const response = await api.get('/meetings')
+  return response.data
+}
+
 // Normalizes meeting API failures for display in the scheduling form.
 export function getMeetingErrorMessage(error) {
   return (

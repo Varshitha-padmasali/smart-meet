@@ -3,6 +3,7 @@ import BrandLogo from '../components/BrandLogo.jsx'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Meetings', to: '/meetings' },
   { label: 'Create', to: '/create-meeting' },
   { label: 'Join', to: '/join-meeting' },
 ]
