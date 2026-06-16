@@ -27,6 +27,59 @@ function initializeSocket(server) {
       })
     })
 
+    // Relays a WebRTC offer from one participant to the target peer.
+    socket.on('webrtc:offer', ({ offer, targetSocketId }) => {
+      if (!offer || !targetSocketId) {
+        socket.emit('webrtc:error', { message: 'Offer and target are required' })
+        return
+      }
+
+      io.to(targetSocketId).emit('webrtc:offer', {
+        offer,
+        senderSocketId: socket.id,
+      })
+    })
+
+    // Relays a WebRTC answer back to the peer that created the offer.
+    socket.on('webrtc:answer', ({ answer, targetSocketId }) => {
+      if (!answer || !targetSocketId) {
+        socket.emit('webrtc:error', { message: 'Answer and target are required' })
+        return
+      }
+
+      io.to(targetSocketId).emit('webrtc:answer', {
+        answer,
+        senderSocketId: socket.id,
+      })
+    })
+
+    // Relays ICE candidates so peers can establish the best network path.
+    socket.on('webrtc:ice-candidate', ({ candidate, targetSocketId }) => {
+      if (!candidate || !targetSocketId) {
+        socket.emit('webrtc:error', {
+          message: 'ICE candidate and target are required',
+        })
+        return
+      }
+
+      io.to(targetSocketId).emit('webrtc:ice-candidate', {
+        candidate,
+        senderSocketId: socket.id,
+      })
+    })
+
+    // Lets a participant leave a room and notifies remaining peers.
+    socket.on('meeting:leave', ({ meetingId }) => {
+      if (!meetingId) {
+        return
+      }
+
+      socket.leave(meetingId)
+      socket.to(meetingId).emit('meeting:participant-left', {
+        socketId: socket.id,
+      })
+    })
+
     // Broadcasts a chat message to everyone currently connected to the meeting room.
     socket.on('chat:send-message', async ({ meetingId, message, sender }) => {
       if (!meetingId || !message?.trim()) {
