@@ -1,18 +1,18 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
-import ChatPanel from '../components/ChatPanel.jsx'
 import FormField from '../components/FormField.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import useAuth from '../hooks/useAuth.js'
 
 // JoinMeetingPage joins a Socket.io room for chat; full video join arrives later.
 function JoinMeetingPage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [formData, setFormData] = useState({
     displayName: user?.name || '',
     meetingCode: '',
   })
-  const [activeMeetingId, setActiveMeetingId] = useState('')
   const [status, setStatus] = useState('Enter a meeting code to preview the join flow.')
 
   function handleChange(event) {
@@ -25,8 +25,9 @@ function JoinMeetingPage() {
 
   function handleSubmit(event) {
     event.preventDefault()
-    setActiveMeetingId(formData.meetingCode.trim())
-    setStatus('Joined the meeting chat room. Video room access will be added later.')
+    const meetingId = formData.meetingCode.trim()
+    setStatus('Opening meeting room...')
+    navigate(`/meeting/${meetingId}`)
   }
 
   return (
@@ -70,15 +71,6 @@ function JoinMeetingPage() {
           {status}
         </p>
       </form>
-
-      <ChatPanel
-        meetingId={activeMeetingId}
-        user={{
-          email: user?.email,
-          name: formData.displayName || user?.name,
-          username: user?.username,
-        }}
-      />
     </section>
   )
 }

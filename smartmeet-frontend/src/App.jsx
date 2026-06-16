@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import JoinMeetingPage from './pages/JoinMeetingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import MeetingListPage from './pages/MeetingListPage.jsx'
+import MeetingRoomPage from './pages/MeetingRoomPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 
 // Defines all client-side routes for the frontend-only SmartMeet application.
@@ -19,6 +20,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/meetings" element={<MeetingListPage />} />
+          <Route path="/meeting/:meetingId" element={<MeetingRoomPage />} />
           <Route path="/create-meeting" element={<CreateMeetingPage />} />
           <Route path="/join-meeting" element={<JoinMeetingPage />} />
         </Route>

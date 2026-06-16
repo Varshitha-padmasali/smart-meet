@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Button from '../components/Button.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import {
   getMeetingErrorMessage,
@@ -79,6 +80,9 @@ function MeetingListPage() {
             <p className="mt-4 text-sm text-slate-500">
               Host: {meeting.host?.name || 'Unknown host'}
             </p>
+            <Button className="mt-5 w-full" to={`/meeting/${meeting._id}`}>
+              Open Room
+            </Button>
           </article>
         ))}
       </div>
