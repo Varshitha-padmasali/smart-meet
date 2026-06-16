@@ -4,17 +4,17 @@ const TOKEN_STORAGE_KEY = 'smartmeet_token'
 
 // Keeps auth-specific API calls in one place so pages stay focused on UI state.
 export async function signupUser(userDetails) {
-  const response = await api.post('/signup', userDetails)
+  const response = await api.post('/auth/signup', userDetails)
   return response.data
 }
 
 export async function loginUser(credentials) {
-  const response = await api.post('/login', credentials)
+  const response = await api.post('/auth/login', credentials)
   return response.data
 }
 
 export async function getCurrentUser() {
-  const response = await api.get('/me')
+  const response = await api.get('/auth/me')
   return response.data
 }
 
