@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import CreateMeetingPage from './pages/CreateMeetingPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -14,9 +15,11 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/create-meeting" element={<CreateMeetingPage />} />
-        <Route path="/join-meeting" element={<JoinMeetingPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/create-meeting" element={<CreateMeetingPage />} />
+          <Route path="/join-meeting" element={<JoinMeetingPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -1,22 +1,50 @@
+import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
 import PageHeader from '../components/PageHeader.jsx'
-import { dummyMeetings, dummyUser } from '../data/dummyMeetings.js'
+import { dummyMeetings } from '../data/dummyMeetings.js'
+import useAuth from '../hooks/useAuth.js'
 
-// Dashboard page shows a welcome message, meeting actions, and sample meeting data.
+// Dashboard page shows authenticated user details, meeting actions, and logout.
 function DashboardPage() {
+  const navigate = useNavigate()
+  const { logout, user } = useAuth()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <section className="space-y-8">
       <div className="flex flex-col gap-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <PageHeader
-          description={`You are signed in as a ${dummyUser.role}. Create a new video room or join an existing one using a meeting code.`}
+          description="Create a new video room or join an existing one using a meeting code."
           eyebrow="Dashboard"
-          title={`Welcome, ${dummyUser.name}`}
+          title={`Welcome, ${user?.name || 'SmartMeet user'}`}
         />
         <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
           <Button to="/create-meeting">Create Meeting</Button>
           <Button to="/join-meeting" variant="secondary">
             Join Meeting
           </Button>
+          <Button onClick={handleLogout} type="button" variant="secondary">
+            Logout
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2">
+        <div>
+          <p className="text-sm font-medium text-slate-500">Current user</p>
+          <p className="mt-1 text-lg font-semibold text-slate-950">
+            {user?.name || 'Not available'}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">Email address</p>
+          <p className="mt-1 text-lg font-semibold text-slate-950">
+            {user?.email || 'Not available'}
+          </p>
         </div>
       </div>
 
