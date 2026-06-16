@@ -1,0 +1,10 @@
+{
+  "name": "smartmeet",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd smartmeet-frontend && npx vite",
+    "build": "cd smartmeet-frontend && npx vite build",
+    "start": "cd smartmeet-backend && node src/server.js"
+  }
+}
