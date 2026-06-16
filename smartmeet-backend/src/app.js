@@ -1,6 +1,7 @@
 const cors = require('cors')
 const express = require('express')
 const authRoutes = require('./routes/authRoutes')
+const meetingRoutes = require('./routes/meetingRoutes')
 
 const app = express()
 
@@ -15,6 +16,9 @@ app.get('/', (req, res) => {
 
 // Auth routes are grouped under one API prefix for clean version growth later.
 app.use('/api/auth', authRoutes)
+
+// Meeting routes stay separate from auth as the meeting domain grows.
+app.use('/api/meetings', meetingRoutes)
 
 // Centralized fallback for unknown routes.
 app.use((req, res) => {
