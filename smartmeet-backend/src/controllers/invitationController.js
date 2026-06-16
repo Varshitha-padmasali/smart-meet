@@ -64,6 +64,27 @@ async function inviteUserByUsername(req, res) {
   }
 }
 
+// Lists pending invitations for the authenticated user.
+async function getMyInvitations(req, res) {
+  try {
+    const invitations = await Invitation.find({
+      invitee: req.user._id,
+      status: 'pending',
+    })
+      .populate('meeting', 'title description scheduledAt status')
+      .populate('invitedBy', 'name username email')
+      .sort({ createdAt: -1 })
+
+    return res.json({ invitations })
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+      message: 'Unable to load invitations',
+    })
+  }
+}
+
 module.exports = {
+  getMyInvitations,
   inviteUserByUsername,
 }

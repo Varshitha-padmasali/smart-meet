@@ -1,18 +1,38 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import { dummyMeetings } from '../data/dummyMeetings.js'
 import useAuth from '../hooks/useAuth.js'
+import {
+  getInvitationErrorMessage,
+  getMyInvitations,
+} from '../services/invitationService.js'
 
 // Dashboard page shows authenticated user details, meeting actions, and logout.
 function DashboardPage() {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
+  const [invitations, setInvitations] = useState([])
+  const [invitationError, setInvitationError] = useState('')
 
   function handleLogout() {
     logout()
     navigate('/login')
   }
+
+  useEffect(() => {
+    async function loadInvitations() {
+      try {
+        const data = await getMyInvitations()
+        setInvitations(data.invitations)
+      } catch (error) {
+        setInvitationError(getInvitationErrorMessage(error))
+      }
+    }
+
+    loadInvitations()
+  }, [])
 
   return (
     <section className="space-y-8">
@@ -49,6 +69,46 @@ function DashboardPage() {
       </div>
 
       <div>
+        <div className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold tracking-normal text-slate-950">
+              Invitation notifications
+            </h2>
+            <span className="rounded-md bg-cyan-50 px-3 py-1 text-sm font-semibold text-cyan-700">
+              {invitations.length} pending
+            </span>
+          </div>
+          {invitationError ? (
+            <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {invitationError}
+            </p>
+          ) : null}
+          <div className="mt-4 space-y-3">
+            {invitations.length > 0 ? (
+              invitations.map((invitation) => (
+                <article
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                  key={invitation._id}
+                >
+                  <p className="font-semibold text-slate-950">
+                    {invitation.meeting?.title || 'SmartMeet invitation'}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Invited by {invitation.invitedBy?.name || 'Host'} for{' '}
+                    {invitation.meeting?.scheduledAt
+                      ? new Date(invitation.meeting.scheduledAt).toLocaleString()
+                      : 'a scheduled meeting'}
+                  </p>
+                </article>
+              ))
+            ) : (
+              <p className="text-sm text-slate-600">
+                No pending invitations yet.
+              </p>
+            )}
+          </div>
+        </div>
+
         <h2 className="text-xl font-bold tracking-normal text-slate-950">
           Upcoming meetings
         </h2>
