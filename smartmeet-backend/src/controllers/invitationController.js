@@ -84,7 +84,82 @@ async function getMyInvitations(req, res) {
   }
 }
 
+// Accepts or declines a pending invitation and adds the user to meeting participants.
+async function respondToInvitation(req, res) {
+  try {
+    const { invitationId } = req.params
+    const { response } = req.body
+
+    if (!['accepted', 'declined'].includes(response)) {
+      return res.status(400).json({ message: 'Response must be accepted or declined' })
+    }
+
+    const invitation = await Invitation.findOne({
+      _id: invitationId,
+      invitee: req.user._id,
+      status: 'pending',
+    })
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found or already responded' })
+    }
+
+    invitation.status = response
+    invitation.respondedAt = new Date()
+    await invitation.save()
+
+    if (response === 'accepted') {
+      await Meeting.findByIdAndUpdate(invitation.meeting, {
+        $addToSet: {
+          participants: {
+            joinedAt: null,
+            leftAt: null,
+            role: 'participant',
+            user: req.user._id,
+          },
+        },
+      })
+    }
+
+    return res.json({ invitation, message: `Invitation ${response}` })
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+      message: 'Unable to respond to invitation',
+    })
+  }
+}
+
+// Revokes a previously sent invitation (host only).
+async function revokeInvitation(req, res) {
+  try {
+    const { invitationId } = req.params
+
+    const invitation = await Invitation.findById(invitationId).populate('meeting', 'host')
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' })
+    }
+
+    if (invitation.meeting.host.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the host can revoke invitations' })
+    }
+
+    invitation.status = 'revoked'
+    await invitation.save()
+
+    return res.json({ invitation, message: 'Invitation revoked' })
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+      message: 'Unable to revoke invitation',
+    })
+  }
+}
+
 module.exports = {
   getMyInvitations,
   inviteUserByUsername,
+  respondToInvitation,
+  revokeInvitation,
 }

@@ -1,5 +1,6 @@
 const cors = require('cors')
 const express = require('express')
+const analyticsRoutes = require('./routes/analyticsRoutes')
 const authRoutes = require('./routes/authRoutes')
 const invitationRoutes = require('./routes/invitationRoutes')
 const meetingRoutes = require('./routes/meetingRoutes')
@@ -27,6 +28,9 @@ app.use('/api/invitations', invitationRoutes)
 
 // Message routes expose authenticated chat history.
 app.use('/api/messages', messageRoutes)
+
+// Analytics routes expose focus scores and engagement metrics.
+app.use('/api/analytics', analyticsRoutes)
 
 // Centralized fallback for unknown routes.
 app.use((req, res) => {

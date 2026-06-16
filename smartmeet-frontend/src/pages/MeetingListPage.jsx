@@ -80,9 +80,14 @@ function MeetingListPage() {
             <p className="mt-4 text-sm text-slate-500">
               Host: {meeting.host?.name || 'Unknown host'}
             </p>
-            <Button className="mt-5 w-full" to={`/meeting/${meeting._id}`}>
-              Open Room
-            </Button>
+            <div className="mt-5 flex gap-3">
+              <Button className="flex-1" to={`/meeting/${meeting._id}`}>
+                Open Room
+              </Button>
+              <Button className="flex-1" variant="secondary" to={`/meetings/${meeting._id}`}>
+                Details
+              </Button>
+            </div>
           </article>
         ))}
       </div>

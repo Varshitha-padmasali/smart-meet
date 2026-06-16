@@ -1,7 +1,22 @@
 const { Server } = require('socket.io')
 const Message = require('../models/Message')
+const Violation = require('../models/Violation')
 
-// Attaches Socket.io to the HTTP server and defines base connection lifecycle events.
+const TOXIC_PATTERNS = [
+  /\b(hate|kill|stupid|idiot|dumb|loser|ugly|worthless|shut up)\b/i,
+  /\b(f+u+c+k|s+h+i+t|a+s+s+h+o+l+e|b+i+t+c+h)\b/i,
+]
+
+function detectToxicity(text) {
+  for (const pattern of TOXIC_PATTERNS) {
+    if (pattern.test(text)) {
+      return { isToxic: true, score: 0.9 }
+    }
+  }
+  return { isToxic: false, score: 0 }
+}
+
+// Attaches Socket.io to the HTTP server and defines real-time event handlers.
 function initializeSocket(server) {
   const io = new Server(server, {
     cors: {
@@ -10,10 +25,12 @@ function initializeSocket(server) {
     },
   })
 
+  // socketId -> { meetingId, user }
+  const socketMeta = new Map()
+
   io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`)
 
-    // Allows clients to subscribe to a meeting-specific real-time room.
     socket.on('meeting:join', ({ meetingId, user }) => {
       if (!meetingId) {
         socket.emit('chat:error', { message: 'Meeting id is required' })
@@ -21,13 +38,14 @@ function initializeSocket(server) {
       }
 
       socket.join(meetingId)
+      socketMeta.set(socket.id, { meetingId, user })
+
       socket.to(meetingId).emit('meeting:participant-joined', {
         socketId: socket.id,
         user,
       })
     })
 
-    // Relays a WebRTC offer from one participant to the target peer.
     socket.on('webrtc:offer', ({ offer, targetSocketId }) => {
       if (!offer || !targetSocketId) {
         socket.emit('webrtc:error', { message: 'Offer and target are required' })
@@ -40,7 +58,6 @@ function initializeSocket(server) {
       })
     })
 
-    // Relays a WebRTC answer back to the peer that created the offer.
     socket.on('webrtc:answer', ({ answer, targetSocketId }) => {
       if (!answer || !targetSocketId) {
         socket.emit('webrtc:error', { message: 'Answer and target are required' })
@@ -53,7 +70,6 @@ function initializeSocket(server) {
       })
     })
 
-    // Relays ICE candidates so peers can establish the best network path.
     socket.on('webrtc:ice-candidate', ({ candidate, targetSocketId }) => {
       if (!candidate || !targetSocketId) {
         socket.emit('webrtc:error', {
@@ -68,19 +84,49 @@ function initializeSocket(server) {
       })
     })
 
-    // Lets a participant leave a room and notifies remaining peers.
     socket.on('meeting:leave', ({ meetingId }) => {
-      if (!meetingId) {
-        return
-      }
+      if (!meetingId) return
 
       socket.leave(meetingId)
+      socketMeta.delete(socket.id)
       socket.to(meetingId).emit('meeting:participant-left', {
         socketId: socket.id,
       })
     })
 
-    // Broadcasts a chat message to everyone currently connected to the meeting room.
+    // Host mutes a specific participant.
+    socket.on('host:mute-participant', ({ targetSocketId }) => {
+      if (!targetSocketId) return
+      io.to(targetSocketId).emit('host:muted', { by: socket.id })
+      const meta = socketMeta.get(targetSocketId)
+      if (meta?.meetingId) {
+        socket.to(meta.meetingId).emit('meeting:participant-muted', { socketId: targetSocketId })
+      }
+    })
+
+    // Host unmutes a specific participant.
+    socket.on('host:unmute-participant', ({ targetSocketId }) => {
+      if (!targetSocketId) return
+      io.to(targetSocketId).emit('host:unmuted', { by: socket.id })
+      const meta = socketMeta.get(targetSocketId)
+      if (meta?.meetingId) {
+        socket.to(meta.meetingId).emit('meeting:participant-unmuted', { socketId: targetSocketId })
+      }
+    })
+
+    // Host removes a participant from the meeting room.
+    socket.on('host:remove-participant', ({ meetingId, targetSocketId }) => {
+      if (!meetingId || !targetSocketId) return
+
+      io.to(targetSocketId).emit('host:removed', { by: socket.id })
+      const targetSocket = io.sockets.sockets.get(targetSocketId)
+      if (targetSocket) {
+        targetSocket.leave(meetingId)
+        socketMeta.delete(targetSocketId)
+      }
+      socket.to(meetingId).emit('meeting:participant-left', { socketId: targetSocketId })
+    })
+
     socket.on('chat:send-message', async ({ meetingId, message, sender }) => {
       if (!meetingId || !message?.trim()) {
         socket.emit('chat:error', {
@@ -89,16 +135,50 @@ function initializeSocket(server) {
         return
       }
 
+      const text = message.trim()
+      const { isToxic, score } = detectToxicity(text)
+
       try {
         const savedMessage = await Message.create({
           meetingId,
+          moderationStatus: isToxic ? 'flagged' : 'clean',
           senderName: sender?.name || 'Participant',
           senderUsername: sender?.username || '',
-          text: message.trim(),
+          text,
         })
+
+        if (isToxic) {
+          await Violation.create({
+            action: 'warned',
+            meetingId,
+            messageId: savedMessage._id,
+            originalText: text,
+            senderName: sender?.name || 'Participant',
+            toxicityScore: score,
+            violationType: 'toxic',
+          }).catch(() => {})
+
+          socket.emit('chat:warning', {
+            message: 'Your message was flagged for inappropriate content. Please keep the conversation respectful.',
+          })
+
+          io.to(meetingId).emit('chat:new-message', {
+            createdAt: savedMessage.createdAt,
+            flagged: true,
+            id: savedMessage._id,
+            meetingId: savedMessage.meetingId,
+            message: '[Message flagged for inappropriate content]',
+            sender: {
+              name: savedMessage.senderName,
+              username: savedMessage.senderUsername,
+            },
+          })
+          return
+        }
 
         io.to(meetingId).emit('chat:new-message', {
           createdAt: savedMessage.createdAt,
+          flagged: false,
           id: savedMessage._id,
           meetingId: savedMessage.meetingId,
           message: savedMessage.text,
@@ -115,6 +195,11 @@ function initializeSocket(server) {
     })
 
     socket.on('disconnect', () => {
+      const meta = socketMeta.get(socket.id)
+      if (meta?.meetingId) {
+        socket.to(meta.meetingId).emit('meeting:participant-left', { socketId: socket.id })
+      }
+      socketMeta.delete(socket.id)
       console.log(`Socket disconnected: ${socket.id}`)
     })
   })
