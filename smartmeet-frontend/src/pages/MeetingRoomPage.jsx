@@ -6,6 +6,7 @@ import ParticipantList from '../components/ParticipantList.jsx'
 import VideoTile from '../components/VideoTile.jsx'
 import useAuth from '../hooks/useAuth.js'
 import useFocusDetection from '../hooks/useFocusDetection.js'
+import useSpeechToText from '../hooks/useSpeechToText.js'
 import useWebRTC from '../hooks/useWebRTC.js'
 import { getMeetingById } from '../services/meetingService.js'
 import socket from '../services/socketService.js'
@@ -37,6 +38,7 @@ function MeetingRoomPage() {
   const [participants, setParticipants] = useState([])
   const [mutedSocketIds, setMutedSocketIds] = useState(new Set())
   const [focusEnabled, setFocusEnabled] = useState(false)
+  const [speechEnabled, setSpeechEnabled] = useState(false)
   const [joined, setJoined] = useState(false)
   const localVideoRef = useRef(null)
 
@@ -60,6 +62,14 @@ function MeetingRoomPage() {
     localVideoRef,
     focusEnabled && joined,
   )
+  const {
+    error: speechError,
+    isListening,
+    isSupported: speechSupported,
+    startListening,
+    stopListening,
+    transcript,
+  } = useSpeechToText()
 
   const isHost =
     meeting?.host?._id === user?.id ||
@@ -147,9 +157,21 @@ function MeetingRoomPage() {
 
   const handleLeave = useCallback(() => {
     socket.emit('meeting:leave', { meetingId })
+    stopListening()
     stopMedia()
     navigate('/meetings')
-  }, [meetingId, navigate, stopMedia])
+  }, [meetingId, navigate, stopListening, stopMedia])
+
+  const handleSpeechToggle = useCallback(() => {
+    if (isListening) {
+      stopListening()
+      setSpeechEnabled(false)
+      return
+    }
+
+    startListening()
+    setSpeechEnabled(true)
+  }, [isListening, startListening, stopListening])
 
   const allTiles = [
     { isLocal: true, socketId: 'local', stream: localStream, user },
@@ -294,6 +316,13 @@ function MeetingRoomPage() {
               >
                 👁️
               </ControlButton>
+              <ControlButton
+                onClick={handleSpeechToggle}
+                active={speechEnabled && isListening}
+                title={isListening ? 'Stop live transcript' : 'Start live transcript'}
+              >
+                CC
+              </ControlButton>
               <ControlButton onClick={handleLeave} danger title="Leave meeting">
                 ✕
               </ControlButton>
@@ -307,6 +336,26 @@ function MeetingRoomPage() {
               isFocused={isFocused}
             />
           )}
+
+          {joined && speechEnabled ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <p className="font-semibold text-slate-950">Live transcript</p>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {isListening ? 'Listening' : 'Paused'}
+                </span>
+              </div>
+              {!speechSupported || speechError ? (
+                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+                  {speechError || 'Speech recognition is not supported in this browser.'}
+                </p>
+              ) : (
+                <p className="mt-3 min-h-12 rounded-md bg-slate-50 p-3 text-slate-700">
+                  {transcript || 'Start speaking to see captions here.'}
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
