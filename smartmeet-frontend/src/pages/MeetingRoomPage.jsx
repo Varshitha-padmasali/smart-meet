@@ -37,6 +37,7 @@ function MeetingRoomPage() {
   const [activeTab, setActiveTab] = useState('chat')
   const [participants, setParticipants] = useState([])
   const [mutedSocketIds, setMutedSocketIds] = useState(new Set())
+  const [abuseWarning, setAbuseWarning] = useState(null)
   const [focusEnabled, setFocusEnabled] = useState(false)
   const [speechEnabled, setSpeechEnabled] = useState(false)
   const [voiceWarning, setVoiceWarning] = useState('')
@@ -149,6 +150,7 @@ function MeetingRoomPage() {
     socket.on('meeting:participant-unmuted', handleUnmuted)
     socket.on('host:removed', handleHostRemoved)
     socket.on('voice:warning', ({ message }) => setVoiceWarning(message))
+    socket.on('abuse:warning', (warning) => setAbuseWarning(warning))
 
     return () => {
       socket.off('meeting:participant-joined', handleJoined)
@@ -157,6 +159,7 @@ function MeetingRoomPage() {
       socket.off('meeting:participant-unmuted', handleUnmuted)
       socket.off('host:removed', handleHostRemoved)
       socket.off('voice:warning')
+      socket.off('abuse:warning')
     }
   }, [meetingId, navigate, stopMedia])
 
@@ -242,6 +245,18 @@ function MeetingRoomPage() {
       {rtcError ? (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
           {rtcError}
+        </div>
+      ) : null}
+
+      {abuseWarning ? (
+        <div
+          className={`rounded-md border px-4 py-3 text-sm font-semibold ${
+            abuseWarning.severity === 'high'
+              ? 'border-red-300 bg-red-50 text-red-700'
+              : 'border-amber-200 bg-amber-50 text-amber-700'
+          }`}
+        >
+          {abuseWarning.message} Warning {abuseWarning.count}/3.
         </div>
       ) : null}
 

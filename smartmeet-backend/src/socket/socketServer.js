@@ -27,6 +27,18 @@ function initializeSocket(server) {
 
   // socketId -> { meetingId, user }
   const socketMeta = new Map()
+  const warningCounts = new Map()
+
+  function emitAbuseWarning(socket, warning) {
+    const nextCount = (warningCounts.get(socket.id) || 0) + 1
+    warningCounts.set(socket.id, nextCount)
+
+    socket.emit('abuse:warning', {
+      ...warning,
+      count: nextCount,
+      severity: nextCount >= 3 ? 'high' : 'medium',
+    })
+  }
 
   io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`)
@@ -158,6 +170,11 @@ function initializeSocket(server) {
             violationType: 'toxic',
           }).catch(() => {})
 
+          emitAbuseWarning(socket, {
+            message: 'Your chat message was flagged. Continued violations may lead to removal.',
+            source: 'chat',
+          })
+
           socket.emit('chat:warning', {
             message: 'Your message was flagged for inappropriate content. Please keep the conversation respectful.',
           })
@@ -216,6 +233,11 @@ function initializeSocket(server) {
         violationType: 'harassment',
       }).catch(() => {})
 
+      emitAbuseWarning(socket, {
+        message: 'Your speech was flagged. Continued violations may lead to removal.',
+        source: 'voice',
+      })
+
       socket.emit('voice:warning', {
         message: 'Your speech was flagged for possible toxic language.',
         transcript: text,
@@ -228,6 +250,7 @@ function initializeSocket(server) {
         socket.to(meta.meetingId).emit('meeting:participant-left', { socketId: socket.id })
       }
       socketMeta.delete(socket.id)
+      warningCounts.delete(socket.id)
       console.log(`Socket disconnected: ${socket.id}`)
     })
   })
