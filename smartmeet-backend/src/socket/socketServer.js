@@ -194,6 +194,34 @@ function initializeSocket(server) {
       }
     })
 
+    // Analyzes finalized speech transcript chunks for toxic voice content.
+    socket.on('voice:analyze-transcript', async ({ meetingId, sender, transcript }) => {
+      if (!meetingId || !transcript?.trim()) {
+        return
+      }
+
+      const text = transcript.trim()
+      const { isToxic, score } = detectToxicity(text)
+
+      if (!isToxic) {
+        return
+      }
+
+      await Violation.create({
+        action: 'warned',
+        meetingId,
+        originalText: text,
+        senderName: sender?.name || 'Participant',
+        toxicityScore: score,
+        violationType: 'harassment',
+      }).catch(() => {})
+
+      socket.emit('voice:warning', {
+        message: 'Your speech was flagged for possible toxic language.',
+        transcript: text,
+      })
+    })
+
     socket.on('disconnect', () => {
       const meta = socketMeta.get(socket.id)
       if (meta?.meetingId) {

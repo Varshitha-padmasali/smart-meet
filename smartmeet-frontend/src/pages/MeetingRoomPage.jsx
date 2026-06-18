@@ -39,6 +39,7 @@ function MeetingRoomPage() {
   const [mutedSocketIds, setMutedSocketIds] = useState(new Set())
   const [focusEnabled, setFocusEnabled] = useState(false)
   const [speechEnabled, setSpeechEnabled] = useState(false)
+  const [voiceWarning, setVoiceWarning] = useState('')
   const [joined, setJoined] = useState(false)
   const localVideoRef = useRef(null)
 
@@ -62,6 +63,17 @@ function MeetingRoomPage() {
     localVideoRef,
     focusEnabled && joined,
   )
+  const handleFinalTranscript = useCallback(
+    (finalTranscript) => {
+      socket.emit('voice:analyze-transcript', {
+        meetingId,
+        sender: user,
+        transcript: finalTranscript,
+      })
+    },
+    [meetingId, user],
+  )
+
   const {
     error: speechError,
     isListening,
@@ -69,7 +81,7 @@ function MeetingRoomPage() {
     startListening,
     stopListening,
     transcript,
-  } = useSpeechToText()
+  } = useSpeechToText(handleFinalTranscript)
 
   const isHost =
     meeting?.host?._id === user?.id ||
@@ -136,6 +148,7 @@ function MeetingRoomPage() {
     socket.on('meeting:participant-muted', handleMuted)
     socket.on('meeting:participant-unmuted', handleUnmuted)
     socket.on('host:removed', handleHostRemoved)
+    socket.on('voice:warning', ({ message }) => setVoiceWarning(message))
 
     return () => {
       socket.off('meeting:participant-joined', handleJoined)
@@ -143,6 +156,7 @@ function MeetingRoomPage() {
       socket.off('meeting:participant-muted', handleMuted)
       socket.off('meeting:participant-unmuted', handleUnmuted)
       socket.off('host:removed', handleHostRemoved)
+      socket.off('voice:warning')
     }
   }, [meetingId, navigate, stopMedia])
 
@@ -354,6 +368,11 @@ function MeetingRoomPage() {
                   {transcript || 'Start speaking to see captions here.'}
                 </p>
               )}
+              {voiceWarning ? (
+                <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 font-medium text-red-700">
+                  {voiceWarning}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>

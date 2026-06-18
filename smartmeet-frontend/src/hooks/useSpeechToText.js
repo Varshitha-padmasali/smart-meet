@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 // useSpeechToText wraps the browser Web Speech API for live meeting captions.
-function useSpeechToText() {
+function useSpeechToText(onFinalTranscript) {
   const recognitionRef = useRef(null)
   const [error, setError] = useState('')
   const [isListening, setIsListening] = useState(false)
@@ -35,6 +35,13 @@ function useSpeechToText() {
         .join(' ')
 
       setTranscript(text)
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index]
+        if (result.isFinal) {
+          onFinalTranscript?.(result[0].transcript)
+        }
+      }
     }
 
     recognition.onerror = () => {
@@ -50,7 +57,7 @@ function useSpeechToText() {
     recognition.start()
     setError('')
     setIsListening(true)
-  }, [isSupported])
+  }, [isSupported, onFinalTranscript])
 
   useEffect(() => {
     return () => {
