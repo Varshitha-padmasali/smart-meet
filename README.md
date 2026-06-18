@@ -99,3 +99,7 @@ node --check src/server.js
 - Toxicity detection currently uses simple pattern matching for hackathon speed.
 - Speech-to-text uses browser Web Speech API support, which varies by browser.
 - MongoDB must be reachable through `MONGO_URI` for backend runtime verification.
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel, Render, and MongoDB Atlas setup.
