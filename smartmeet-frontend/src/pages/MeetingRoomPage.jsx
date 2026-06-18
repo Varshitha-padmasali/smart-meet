@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import ChatPanel from '../components/ChatPanel.jsx'
 import FocusIndicator from '../components/FocusIndicator.jsx'
 import ParticipantList from '../components/ParticipantList.jsx'
@@ -217,6 +217,14 @@ function MeetingRoomPage() {
           <p className="mt-1 text-sm text-slate-500">ID: {meetingId}</p>
         </div>
         <div className="flex items-center gap-3">
+          {isHost ? (
+            <Link
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-cyan-500 hover:text-cyan-700"
+              to={`/analytics/${meetingId}`}
+            >
+              Analytics
+            </Link>
+          ) : null}
           <span
             className={`rounded-full px-3 py-1 text-sm font-semibold ${
               joined ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
