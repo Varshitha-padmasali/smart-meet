@@ -153,6 +153,7 @@ function useWebRTC(meetingId) {
     if (!meetingId) return undefined
 
     async function handleParticipantJoined({ socketId, user: remoteUser }) {
+      console.log('Participant joined:', socketId)
       const pc = createPeerConnection(socketId)
       setRemoteStreams((prev) => {
         if (prev.find((r) => r.socketId === socketId)) return prev
@@ -162,9 +163,14 @@ function useWebRTC(meetingId) {
       try {
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
-        socket.emit('webrtc:offer', { offer, targetSocketId: socketId })
-      } catch {
-        setError('Failed to create WebRTC offer.')
+      
+        socket.emit('webrtc:offer', {
+          offer,
+          targetSocketId: socketId,
+        })
+      } catch (err) {
+        console.error('WEBRTC OFFER ERROR:', err)
+        setError(`Failed to create WebRTC offer: ${err.message}`)
       }
     }
 
@@ -177,8 +183,9 @@ function useWebRTC(meetingId) {
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         socket.emit('webrtc:answer', { answer, targetSocketId: senderSocketId })
-      } catch {
-        setError('Failed to handle WebRTC offer.')
+      } catch (err) {
+        console.error('WEBRTC HANDLE OFFER ERROR:', err)
+        setError(`Failed to handle WebRTC offer: ${err.message}`)
       }
     }
 
