@@ -5,6 +5,7 @@ const ICE_CONFIG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
   ],
 }
 
@@ -33,7 +34,13 @@ function useWebRTC(meetingId) {
   const createPeerConnection = useCallback(
     (targetSocketId) => {
       const pc = new RTCPeerConnection(ICE_CONFIG)
-
+      pc.oniceconnectionstatechange = () => {
+        console.log(
+          'ICE State:',
+          targetSocketId,
+          pc.iceConnectionState,
+        )
+      }
       pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
           socket.emit('webrtc:ice-candidate', { candidate, targetSocketId })
@@ -54,7 +61,13 @@ function useWebRTC(meetingId) {
       }
 
       pc.onconnectionstatechange = () => {
-        if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+        console.log(
+          'Connection State:',
+          targetSocketId,
+          pc.connectionState,
+        )
+      
+        if (pc.connectionState === 'failed') {
           removePeer(targetSocketId)
         }
       }
