@@ -161,13 +161,15 @@ function useWebRTC(meetingId) {
       })
 
       try {
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-      
-        socket.emit('webrtc:offer', {
-          offer,
-          targetSocketId: socketId,
-        })
+        if (socket.id < socketId) {
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+        
+          socket.emit('webrtc:offer', {
+            offer,
+            targetSocketId: socketId,
+          })
+        }
       } catch (err) {
         console.error('WEBRTC OFFER ERROR:', err)
         setError(`Failed to create WebRTC offer: ${err.message}`)
@@ -175,19 +177,39 @@ function useWebRTC(meetingId) {
     }
 
     async function handleOffer({ offer, senderSocketId }) {
-      let pc = peerConnections.current.get(senderSocketId)
-      if (!pc) pc = createPeerConnection(senderSocketId)
+  let pc = peerConnections.current.get(senderSocketId)
 
-      try {
-        await pc.setRemoteDescription(new RTCSessionDescription(offer))
-        const answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-        socket.emit('webrtc:answer', { answer, targetSocketId: senderSocketId })
-      } catch (err) {
-        console.error('WEBRTC HANDLE OFFER ERROR:', err)
-        setError(`Failed to handle WebRTC offer: ${err.message}`)
-      }
+  if (!pc) {
+    pc = createPeerConnection(senderSocketId)
+  }
+
+  try {
+    // Prevent WebRTC offer collision (glare)
+    if (pc.signalingState !== 'stable') {
+      console.log(
+        'Ignoring incoming offer because signaling state is:',
+        pc.signalingState,
+      )
+      return
     }
+
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(offer),
+    )
+
+    const answer = await pc.createAnswer()
+
+    await pc.setLocalDescription(answer)
+
+    socket.emit('webrtc:answer', {
+      answer,
+      targetSocketId: senderSocketId,
+    })
+  } catch (err) {
+    console.error('WEBRTC HANDLE OFFER ERROR:', err)
+    setError(`Failed to handle WebRTC offer: ${err.message}`)
+  }
+}
 
     async function handleAnswer({ answer, senderSocketId }) {
       const pc = peerConnections.current.get(senderSocketId)
