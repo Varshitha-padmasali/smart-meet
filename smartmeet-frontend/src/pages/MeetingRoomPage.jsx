@@ -70,7 +70,7 @@ function MeetingRoomPage() {
     toggleVideo,
   } = useWebRTC(meetingId)
 
-  const { attentionScore, faceDetected, isFocused } = useFocusDetection(
+  const { attentionScore, error: focusError, faceDetected, isFocused } = useFocusDetection(
     meetingId,
     localVideoRef,
     focusEnabled && joined,
@@ -202,8 +202,8 @@ function MeetingRoomPage() {
       return
     }
 
-    startListening()
-    setSpeechEnabled(true)
+    const started = startListening()
+    setSpeechEnabled(started)
   }, [isListening, startListening, stopListening])
 
   const allTiles = [
@@ -393,6 +393,7 @@ function MeetingRoomPage() {
           {joined && focusEnabled && (
             <FocusIndicator
               attentionScore={attentionScore}
+              error={focusError}
               faceDetected={faceDetected}
               isFocused={isFocused}
             />

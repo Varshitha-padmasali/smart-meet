@@ -1,16 +1,34 @@
 import { useEffect, useState } from 'react'
 import Button from '../components/Button.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import useAuth from '../hooks/useAuth.js'
 import {
+  deleteMeeting,
   getMeetingErrorMessage,
   getMyMeetings,
 } from '../services/meetingService.js'
 
 // MeetingListPage shows scheduled meetings returned by the authenticated API.
 function MeetingListPage() {
+  const { user } = useAuth()
   const [meetings, setMeetings] = useState([])
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState('')
+
+  async function handleDelete(meeting) {
+    if (!window.confirm(`Delete "${meeting.title}" and all of its meeting data?`)) return
+    setDeletingId(meeting._id)
+    setError('')
+    try {
+      await deleteMeeting(meeting._id)
+      setMeetings((current) => current.filter((item) => item._id !== meeting._id))
+    } catch (apiError) {
+      setError(getMeetingErrorMessage(apiError))
+    } finally {
+      setDeletingId('')
+    }
+  }
 
   useEffect(() => {
     async function loadMeetings() {
@@ -88,6 +106,16 @@ function MeetingListPage() {
                 Details
               </Button>
             </div>
+            {(meeting.host?._id || meeting.host?.id || meeting.host) === user?.id ? (
+              <button
+                className="mt-3 w-full rounded-md px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                disabled={deletingId === meeting._id}
+                onClick={() => handleDelete(meeting)}
+                type="button"
+              >
+                {deletingId === meeting._id ? 'Deleting...' : 'Delete Meeting'}
+              </button>
+            ) : null}
           </article>
         ))}
       </div>

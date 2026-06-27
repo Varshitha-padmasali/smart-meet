@@ -1,11 +1,16 @@
 const FocusScore = require('../models/FocusScore')
 const Violation = require('../models/Violation')
+const mongoose = require('mongoose')
 
 // Records a focus data point from a meeting participant.
 async function submitFocusScore(req, res) {
   try {
     const { meetingId } = req.params
     const { attentionScore, faceDetected, headOrientation, isFocused } = req.body
+
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res.status(400).json({ message: 'Focus tracking requires a valid saved meeting ID' })
+    }
 
     if (typeof attentionScore !== 'number') {
       return res.status(400).json({ message: 'attentionScore is required' })
@@ -34,29 +39,32 @@ async function getMeetingAnalytics(req, res) {
   try {
     const { meetingId } = req.params
 
-    const latestScores = await FocusScore.aggregate([
-      { $match: { meetingId: require('mongoose').Types.ObjectId.createFromHexString(meetingId) } },
-      { $sort: { createdAt: -1 } },
-      {
-        $group: {
-          _id: '$userId',
-          attentionScore: { $first: '$attentionScore' },
-          faceDetected: { $first: '$faceDetected' },
-          isFocused: { $first: '$isFocused' },
-          userId: { $first: '$userId' },
-        },
-      },
-      {
-        $lookup: {
-          as: 'user',
-          foreignField: '_id',
-          from: 'users',
-          localField: 'userId',
-          pipeline: [{ $project: { name: 1, username: 1 } }],
-        },
-      },
-      { $unwind: { path: '$user', preserveNullAndEmpty: true } },
-    ])
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res.status(400).json({ message: 'Analytics require a valid saved meeting ID' })
+    }
+
+    // A populated query is compatible with all supported MongoDB Atlas tiers and avoids
+    // relying on version-specific $lookup pipeline behavior.
+    const scoreRecords = await FocusScore.find({ meetingId })
+      .sort({ createdAt: -1 })
+      .limit(2000)
+      .populate('userId', 'name username')
+      .lean()
+
+    const seenUsers = new Set()
+    const latestScores = scoreRecords.reduce((scores, record) => {
+      const userId = record.userId?._id?.toString() || record.userId?.toString()
+      if (!userId || seenUsers.has(userId)) return scores
+      seenUsers.add(userId)
+      scores.push({
+        attentionScore: record.attentionScore,
+        faceDetected: record.faceDetected,
+        isFocused: record.isFocused,
+        user: record.userId,
+        userId,
+      })
+      return scores
+    }, [])
 
     const totalParticipants = latestScores.length
     const focusedCount = latestScores.filter((s) => s.isFocused).length
@@ -78,7 +86,7 @@ async function getMeetingAnalytics(req, res) {
         distractedCount: totalParticipants - focusedCount,
         engagementPercentage,
         focusedCount,
-        lowEngagementAlert: engagementPercentage < 50,
+        lowEngagementAlert: totalParticipants > 0 && engagementPercentage < 50,
         participants: latestScores,
         totalParticipants,
         violations,

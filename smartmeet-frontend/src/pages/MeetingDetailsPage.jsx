@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/Button.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import useAuth from '../hooks/useAuth.js'
@@ -7,10 +7,11 @@ import {
   getInvitationErrorMessage,
   inviteUserByUsername,
 } from '../services/invitationService.js'
-import { getMeetingById, getMeetingErrorMessage } from '../services/meetingService.js'
+import { deleteMeeting, getMeetingById, getMeetingErrorMessage } from '../services/meetingService.js'
 
 function MeetingDetailsPage() {
   const { meetingId } = useParams()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [meeting, setMeeting] = useState(null)
   const [error, setError] = useState('')
@@ -19,6 +20,7 @@ function MeetingDetailsPage() {
   const [inviteStatus, setInviteStatus] = useState('')
   const [inviteError, setInviteError] = useState('')
   const [isInviting, setIsInviting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const isHost =
     meeting?.host?._id === user?.id ||
@@ -54,6 +56,19 @@ function MeetingDetailsPage() {
       setInviteError(getInvitationErrorMessage(err))
     } finally {
       setIsInviting(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${meeting.title}" and all of its meeting data?`)) return
+    setIsDeleting(true)
+    setError('')
+    try {
+      await deleteMeeting(meetingId)
+      navigate('/meetings', { replace: true })
+    } catch (err) {
+      setError(getMeetingErrorMessage(err))
+      setIsDeleting(false)
     }
   }
 
@@ -98,6 +113,16 @@ function MeetingDetailsPage() {
               Analytics
             </Link>
           )}
+          {isHost ? (
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+              disabled={isDeleting}
+              onClick={handleDelete}
+              type="button"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          ) : null}
         </div>
       </div>
 

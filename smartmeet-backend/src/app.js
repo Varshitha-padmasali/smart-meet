@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes')
 const invitationRoutes = require('./routes/invitationRoutes')
 const meetingRoutes = require('./routes/meetingRoutes')
 const messageRoutes = require('./routes/messageRoutes')
+const userRoutes = require('./routes/userRoutes')
 
 const app = express()
 
@@ -19,6 +20,9 @@ app.get('/', (req, res) => {
 
 // Auth routes are grouped under one API prefix for clean version growth later.
 app.use('/api/auth', authRoutes)
+
+// User search powers secure registered-user invitation pickers.
+app.use('/api/users', userRoutes)
 
 // Meeting routes stay separate from auth as the meeting domain grows.
 app.use('/api/meetings', meetingRoutes)

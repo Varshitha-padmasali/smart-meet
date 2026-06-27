@@ -10,6 +10,11 @@ export async function createMeeting(meetingDetails) {
   return response.data
 }
 
+export async function deleteMeeting(meetingId) {
+  const response = await api.delete(`/meetings/${meetingId}`)
+  return response.data
+}
+
 export async function getMyMeetings() {
   const response = await api.get('/meetings')
   return response.data

@@ -1,6 +1,7 @@
 const express = require('express')
 const {
   createMeeting,
+  deleteMeeting,
   endMeeting,
   getMeetingById,
   getMyMeetings,
@@ -13,6 +14,7 @@ const router = express.Router()
 
 router.get('/', protect, getMyMeetings)
 router.post('/', protect, createMeeting)
+router.delete('/:meetingId', protect, deleteMeeting)
 router.get('/:meetingId', protect, getMeetingById)
 router.patch('/:meetingId/start', protect, startMeeting)
 router.patch('/:meetingId/end', protect, endMeeting)

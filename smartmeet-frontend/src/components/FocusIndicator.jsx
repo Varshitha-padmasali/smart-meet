@@ -1,5 +1,13 @@
 // FocusIndicator displays the user's current attention score and focus state.
-function FocusIndicator({ attentionScore, isFocused, faceDetected }) {
+function FocusIndicator({ attentionScore, error, isFocused, faceDetected }) {
+  if (error) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+        {error}
+      </div>
+    )
+  }
+
   const color = !faceDetected
     ? 'text-slate-500'
     : isFocused
@@ -28,7 +36,7 @@ function FocusIndicator({ attentionScore, isFocused, faceDetected }) {
             strokeWidth="3"
           />
           <circle
-            className={isFocused ? 'text-emerald-500' : 'text-amber-500'}
+            className={!faceDetected ? 'text-slate-400' : isFocused ? 'text-emerald-500' : 'text-amber-500'}
             cx="18"
             cy="18"
             r="15.9"

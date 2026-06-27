@@ -53,6 +53,11 @@ function AuthProvider({ children }) {
   }, [])
 
   async function login(credentials) {
+    // A fresh login attempt must not inherit access from an older browser session.
+    clearAuthToken()
+    localStorage.removeItem(GUEST_STORAGE_KEY)
+    setToken(null)
+    setUser(null)
     const data = await loginUser(credentials)
     localStorage.removeItem(GUEST_STORAGE_KEY)
     saveAuthToken(data.token)

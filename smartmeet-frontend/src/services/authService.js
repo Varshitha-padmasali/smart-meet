@@ -9,7 +9,13 @@ export async function signupUser(userDetails) {
 }
 
 export async function loginUser(credentials) {
-  const response = await api.post('/auth/login', credentials)
+  const response = await api.post('/auth/login', {
+    email: credentials.email.trim().toLowerCase(),
+    password: credentials.password,
+  })
+  if (!response.data?.token || !response.data?.user?.id) {
+    throw new Error('The login server returned an invalid authentication response.')
+  }
   return response.data
 }
 
@@ -33,9 +39,14 @@ export function clearAuthToken() {
 
 // Converts Axios errors into friendly messages for the UI.
 export function getAuthErrorMessage(error) {
+  if (error.code === 'ERR_NETWORK') {
+    return 'Cannot reach the SmartMeet server. Check that the backend is running and try again.'
+  }
+
   return (
     error.response?.data?.message ||
     error.response?.data?.error ||
+    error.message ||
     'Unable to connect to SmartMeet. Please try again.'
   )
 }

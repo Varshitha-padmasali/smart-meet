@@ -42,6 +42,7 @@ function AnalyticsPage() {
   useEffect(() => {
     async function load() {
       try {
+        setError('')
         const [analyticsData, meetingData] = await Promise.all([
           getMeetingAnalytics(meetingId),
           getMeetingById(meetingId).catch(() => ({ meeting: null })),
@@ -49,7 +50,12 @@ function AnalyticsPage() {
         setAnalytics(analyticsData.analytics)
         setMeeting(meetingData.meeting)
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load analytics.')
+        setError(
+          err.response?.data?.message ||
+            (err.code === 'ERR_NETWORK'
+              ? 'Cannot reach the analytics server. Check that the backend is running.'
+              : 'Failed to load analytics.'),
+        )
       } finally {
         setIsLoading(false)
       }
