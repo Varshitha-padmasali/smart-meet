@@ -9,9 +9,21 @@ import {
 } from '../services/authService.js'
 import AuthContext from './AuthContext.js'
 
+const GUEST_STORAGE_KEY = 'smartmeet_guest_user'
+
+function getStoredGuestUser() {
+  try {
+    const savedGuest = localStorage.getItem(GUEST_STORAGE_KEY)
+    return savedGuest ? JSON.parse(savedGuest) : null
+  } catch {
+    localStorage.removeItem(GUEST_STORAGE_KEY)
+    return null
+  }
+}
+
 // AuthProvider owns login persistence, current user state, and logout behavior.
 function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => getStoredGuestUser())
   const [token, setToken] = useState(() => getStoredAuthToken())
   const [isLoading, setIsLoading] = useState(true)
 
@@ -42,6 +54,7 @@ function AuthProvider({ children }) {
 
   async function login(credentials) {
     const data = await loginUser(credentials)
+    localStorage.removeItem(GUEST_STORAGE_KEY)
     saveAuthToken(data.token)
     setToken(data.token)
     setUser(data.user)
@@ -50,6 +63,7 @@ function AuthProvider({ children }) {
 
   async function signup(userDetails) {
     const data = await signupUser(userDetails)
+    localStorage.removeItem(GUEST_STORAGE_KEY)
     saveAuthToken(data.token)
     setToken(data.token)
     setUser(data.user)
@@ -58,13 +72,32 @@ function AuthProvider({ children }) {
 
   function logout() {
     clearAuthToken()
+    localStorage.removeItem(GUEST_STORAGE_KEY)
     setToken(null)
     setUser(null)
   }
 
+  function continueAsGuest(displayName) {
+    const guestUser = {
+      email: '',
+      id: `guest-${Date.now()}`,
+      isGuest: true,
+      name: displayName || 'Guest',
+      username: 'guest',
+    }
+
+    clearAuthToken()
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(guestUser))
+    setToken(null)
+    setUser(guestUser)
+    return guestUser
+  }
+
   const value = useMemo(
     () => ({
+      continueAsGuest,
       isAuthenticated: Boolean(token),
+      isGuest: Boolean(user?.isGuest),
       isLoading,
       login,
       logout,

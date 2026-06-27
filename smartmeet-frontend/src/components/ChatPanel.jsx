@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import useAuth from '../hooks/useAuth.js'
 import { getMeetingMessages } from '../services/messageService.js'
 import socket from '../services/socketService.js'
 
 // ChatPanel connects to a meeting room and exchanges real-time Socket.io messages.
 function ChatPanel({ meetingId, user }) {
+  const { isAuthenticated } = useAuth()
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState([])
   const [socketError, setSocketError] = useState('')
@@ -43,7 +45,9 @@ function ChatPanel({ meetingId, user }) {
       }
     }
 
-    loadMessageHistory()
+    if (isAuthenticated) {
+      loadMessageHistory()
+    }
 
     if (!socket.connected) {
       socket.connect()
@@ -73,7 +77,7 @@ function ChatPanel({ meetingId, user }) {
       socket.off('chat:error', handleChatError)
       socket.off('chat:warning', handleToxicWarning)
     }
-  }, [meetingId, user])
+  }, [isAuthenticated, meetingId, user])
 
   function handleSubmit(event) {
     event.preventDefault()

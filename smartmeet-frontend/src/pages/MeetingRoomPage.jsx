@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ChatPanel from '../components/ChatPanel.jsx'
 import FocusIndicator from '../components/FocusIndicator.jsx'
@@ -32,7 +32,7 @@ function ControlButton({ onClick, active, danger, children, title }) {
 function MeetingRoomPage() {
   const { meetingId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { isAuthenticated, isGuest, user } = useAuth()
   const [meeting, setMeeting] = useState(null)
   const [activeTab, setActiveTab] = useState('chat')
   const [participants, setParticipants] = useState([])
@@ -43,6 +43,17 @@ function MeetingRoomPage() {
   const [voiceWarning, setVoiceWarning] = useState('')
   const [joined, setJoined] = useState(false)
   const localVideoRef = useRef(null)
+  const roomUser = useMemo(
+    () =>
+      user || {
+        email: '',
+        id: `guest-${meetingId}`,
+        isGuest: true,
+        name: 'Guest',
+        username: 'guest',
+      },
+    [meetingId, user],
+  )
 
   const {
     error: rtcError,
@@ -68,11 +79,11 @@ function MeetingRoomPage() {
     (finalTranscript) => {
       socket.emit('voice:analyze-transcript', {
         meetingId,
-        sender: user,
+        sender: roomUser,
         transcript: finalTranscript,
       })
     },
-    [meetingId, user],
+    [meetingId, roomUser],
   )
 
   const {
@@ -85,11 +96,16 @@ function MeetingRoomPage() {
   } = useSpeechToText(handleFinalTranscript)
 
   const isHost =
-    meeting?.host?._id === user?.id ||
-    meeting?.host?.id === user?.id ||
-    meeting?.host === user?.id
+    !isGuest &&
+    (meeting?.host?._id === roomUser?.id ||
+      meeting?.host?.id === roomUser?.id ||
+      meeting?.host === roomUser?.id)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
+
     async function load() {
       try {
         const data = await getMeetingById(meetingId)
@@ -99,7 +115,7 @@ function MeetingRoomPage() {
       }
     }
     load()
-  }, [meetingId])
+  }, [isAuthenticated, meetingId])
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -167,17 +183,17 @@ function MeetingRoomPage() {
     const stream = await startMedia()
     if (!stream) return
     if (!socket.connected) socket.connect()
-    socket.emit('meeting:join', { meetingId, user })
-    setParticipants([{ isMuted: false, meetingId, socketId: socket.id, user }])
+    socket.emit('meeting:join', { meetingId, user: roomUser })
+    setParticipants([{ isMuted: false, meetingId, socketId: socket.id, user: roomUser }])
     setJoined(true)
-  }, [meetingId, startMedia, user])
+  }, [meetingId, roomUser, startMedia])
 
   const handleLeave = useCallback(() => {
     socket.emit('meeting:leave', { meetingId })
     stopListening()
     stopMedia()
-    navigate('/meetings')
-  }, [meetingId, navigate, stopListening, stopMedia])
+    navigate(isAuthenticated && !isGuest ? '/meetings' : '/join')
+  }, [isAuthenticated, isGuest, meetingId, navigate, stopListening, stopMedia])
 
   const handleSpeechToggle = useCallback(() => {
     if (isListening) {
@@ -191,9 +207,17 @@ function MeetingRoomPage() {
   }, [isListening, startListening, stopListening])
 
   const allTiles = [
-    { isLocal: true, socketId: 'local', stream: localStream, user },
+    { isLocal: true, socketId: 'local', stream: localStream, user: roomUser },
     ...remoteStreams.map((r) => ({ isLocal: false, ...r })),
   ]
+  const chatUser = useMemo(
+    () => ({
+      email: roomUser?.email,
+      name: roomUser?.name,
+      username: roomUser?.username,
+    }),
+    [roomUser],
+  )
 
   const gridClass =
     allTiles.length === 1
@@ -275,7 +299,7 @@ function MeetingRoomPage() {
               {localStream ? (
                 <VideoTile
                   stream={localStream}
-                  user={user}
+                  user={roomUser}
                   isLocal
                   isVideoOff={isVideoOff}
                   isMuted={isAudioMuted}
@@ -285,7 +309,7 @@ function MeetingRoomPage() {
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-slate-800">
                   <div className="text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-600 text-2xl font-bold text-white">
-                      {user?.name?.charAt(0) || 'Y'}
+                      {roomUser?.name?.charAt(0) || 'Y'}
                     </div>
                     <p className="mt-3 text-sm text-slate-400">
                       {joined ? 'Camera unavailable' : 'Click "Join Meeting" to start'}
@@ -421,10 +445,7 @@ function MeetingRoomPage() {
           </div>
           <div className="flex-1 overflow-hidden">
             {activeTab === 'chat' ? (
-              <ChatPanel
-                meetingId={meetingId}
-                user={{ email: user?.email, name: user?.name, username: user?.username }}
-              />
+              <ChatPanel meetingId={meetingId} user={chatUser} />
             ) : (
               <div className="p-4">
                 <ParticipantList
