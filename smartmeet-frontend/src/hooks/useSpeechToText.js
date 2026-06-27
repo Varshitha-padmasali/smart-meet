@@ -7,7 +7,8 @@ function getSpeechErrorMessage(code) {
     'audio-capture': 'No working microphone was found. Check your audio device.',
     'not-allowed': 'Microphone access was denied. Allow it in browser settings to use captions.',
     'service-not-allowed': 'Speech recognition is blocked by this browser or network.',
-    network: 'Live captions lost the speech service connection. Retrying...',
+    network:
+      'The browser speech service is unreachable. Check your internet connection, use Chrome or Edge, then press CC to retry.',
   }
 
   return messages[code] || 'Live captions stopped unexpectedly. Please try again.'
@@ -81,7 +82,13 @@ function useSpeechToText(onFinalTranscript) {
     }
 
     recognition.onerror = (event) => {
-      const fatal = ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(event.error)
+      const fatal = [
+        'audio-capture',
+        'language-not-supported',
+        'network',
+        'not-allowed',
+        'service-not-allowed',
+      ].includes(event.error)
       setError(getSpeechErrorMessage(event.error))
       setIsListening(false)
       if (fatal) shouldListenRef.current = false

@@ -4,6 +4,20 @@ import { submitFocusScore } from '../services/analyticsService.js'
 const REPORT_INTERVAL_MS = 5000
 const FRAME_INTERVAL_MS = 180
 const FOCUS_THRESHOLD = 60
+const FACE_MESH_VERSION = '0.4.1633559619'
+
+function resolveFaceMeshConstructor(module) {
+  const FaceMesh =
+    module.FaceMesh ||
+    module.default?.FaceMesh ||
+    module['module.exports']?.FaceMesh
+
+  if (typeof FaceMesh !== 'function') {
+    throw new Error('MediaPipe Face Mesh did not load correctly')
+  }
+
+  return FaceMesh
+}
 
 function average(points) {
   return points.reduce(
@@ -104,9 +118,11 @@ function useFocusDetection(meetingId, videoRef, enabled = false) {
     async function initialize() {
       try {
         setError('')
-        const { FaceMesh } = await import('@mediapipe/face_mesh')
+        const faceMeshModule = await import('@mediapipe/face_mesh')
+        const FaceMesh = resolveFaceMeshConstructor(faceMeshModule)
         faceMesh = new FaceMesh({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          locateFile: (file) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${FACE_MESH_VERSION}/${file}`,
         })
         faceMesh.setOptions({
           maxNumFaces: 1,
